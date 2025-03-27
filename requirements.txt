@@ -1,0 +1,11 @@
+fastapi
+pydantic
+python-jose
+passlib
+python-multipart
+uvicorn
+jose
+python-dotenv
+supabase
+email-validator
+bcrypt
