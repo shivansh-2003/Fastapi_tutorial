@@ -9,6 +9,8 @@ from fastapi.security import OAuth2PasswordBearer
 from database import db
 from schemas import TokenData, UserPublic
 from models import UserInDB
+from utils import generate_reset_token
+from email import send_password_reset_email
 
 # Load environment variables
 load_dotenv()
@@ -78,5 +80,36 @@ async def get_current_active_user(current_user: UserInDB = Depends(get_current_u
         username=current_user.username,
         full_name=current_user.full_name,
         email=current_user.email,
+        verified=current_user.verified,
         disabled=current_user.disabled
     )
+
+async def get_current_verified_user(current_user: UserPublic = Depends(get_current_active_user)):
+    if not current_user.verified:
+        raise HTTPException(status_code=400, detail="Email not verified")
+    return current_user
+
+async def request_password_reset(email: str) -> bool:
+    """Request a password reset for the given email"""
+    user = await db.get_user_by_email(email)
+    if not user:
+        # Don't reveal that the email doesn't exist
+        return True
+    
+    reset_token = generate_reset_token()
+    success = await db.store_reset_token(email, reset_token)
+    
+    if success:
+        # Send password reset email
+        send_password_reset_email(email, reset_token)
+    
+    return success
+
+async def reset_password(reset_token: str, new_password: str) -> bool:
+    """Reset a user's password using a reset token"""
+    user_id = await db.validate_reset_token(reset_token)
+    if not user_id:
+        return False
+    
+    hashed_password = get_password_hash(new_password)
+    return await db.update_password(user_id, hashed_password)

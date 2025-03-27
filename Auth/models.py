@@ -7,7 +7,9 @@ class User(BaseModel):
     full_name: str
     email: EmailStr
     disabled: Optional[bool] = False
+    verified: Optional[bool] = False
     created_at: Optional[datetime] = None
 
 class UserInDB(User):
     hashed_password: str
+    verification_code: Optional[str] = None
